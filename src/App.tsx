@@ -6,18 +6,21 @@ function App() {
   return <TodoList />;
 }
 
-//////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
 
 interface TodoListProps {}
 
 function TodoList(props: TodoListProps) {
-  const [todosStore, todoActions] = useTodoStore();
+  // 1) Get the store
+  const todosStore = useTodoStore();
+  // 2) Select the desired slice of state using useStoreObservable
   const todos = useStoreObservable(todosStore, (state) => state.todos);
   const loading = useStoreObservable(todosStore, (state) => state.loading);
 
   useEffect(() => {
-    todoActions.loadTodos();
-  }, [todoActions]);
+    // 3) Use store updates as necessary
+    todosStore.loadTodos();
+  }, [todosStore]);
 
   return (
     <>
@@ -38,7 +41,7 @@ function TodoList(props: TodoListProps) {
   );
 }
 
-//////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
 
 interface TodoItemProps {
   todo: Todo;
@@ -48,6 +51,6 @@ function TodoItem({ todo }: TodoItemProps) {
   return <p>{todo.title}</p>;
 }
 
-//////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
 
 export default App;

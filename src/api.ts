@@ -1,8 +1,8 @@
 import { mapTo, Observable, timer } from "rxjs";
 import { Todo } from "./state";
 
-export class TodoApi {
-  public getTodos(): Observable<Todo[]> {
+export const TodoApi = {
+  getTodos(): Observable<Todo[]> {
     return timer(1000).pipe(
       mapTo([
         {
@@ -22,5 +22,5 @@ export class TodoApi {
         },
       ])
     );
-  }
-}
+  },
+};
