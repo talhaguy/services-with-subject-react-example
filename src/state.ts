@@ -1,32 +1,38 @@
+import { isPlainObject } from "lodash";
+import { useContext, createContext, useState, useEffect } from "react";
 import { BehaviorSubject, distinctUntilChanged, map, Observable } from "rxjs";
 import { TodoApi } from "./api";
 
-// base class for generic state methods and props
-// this class stays the same, it is just inherited from
-export class StateStore<State> {
-  private state: BehaviorSubject<State>;
-  public state$: Observable<State>;
+export class StateStore<State> extends BehaviorSubject<State> {
+  public updateState(updatedState: State): void {
+    this.next(updatedState);
+  }
 
-  constructor(initialState: State) {
-    this.state = new BehaviorSubject<State>(initialState);
-    this.state$ = this.state.asObservable();
+  public patchState(updatedState: Partial<State>): void {
+    if (isPlainObject(this.value)) {
+      this.next({
+        ...this.value,
+        ...updatedState,
+      });
+    } else {
+      this.next(updatedState as State);
+    }
+  }
+
+  public getState(): State {
+    return this.value;
   }
 
   public select<Selected>(
     projector: SelectProjector<State, Selected>
-  ): Observable<Selected> {
-    return this.state$.pipe(map(projector), distinctUntilChanged());
-  }
-
-  public patchState(updatedState: Partial<State>): void {
-    this.state.next({
-      ...this.state.value,
-      ...updatedState,
-    });
-  }
-
-  public getState(): State {
-    return this.state.value;
+  ): Observable<Selected | State> {
+    if (!projector) {
+      return this.pipe(distinctUntilChanged());
+    } else if (projector && isPlainObject(this.value)) {
+      return this.pipe(map(projector), distinctUntilChanged());
+    } else {
+      return this.pipe(distinctUntilChanged());
+    }
   }
 }
 
@@ -35,6 +41,25 @@ export interface SelectProjector<
   Selected
 > {
   (state: State): Selected;
+}
+
+export function useStoreObservable<State, Selected>(
+  store: StateStore<State>,
+  projector: SelectProjector<State, Selected>
+) {
+  const [value, setValue] = useState<Selected>(projector(store.value));
+
+  useEffect(() => {
+    const sub = store.select(projector).subscribe((v) => {
+      setValue(v as Selected);
+    });
+
+    return () => {
+      sub.unsubscribe();
+    };
+  }, [store, projector]);
+
+  return value;
 }
 
 //////////////////////////////////////////////////////
@@ -50,30 +75,39 @@ export interface Todo {
   complete: boolean;
 }
 
-// create your own custom state store that extends from the base one
-export class TodosStateStore extends StateStore<TodosState> {
-  // expose desired slices of state
-  public todos$ = this.select((state) => state.todos);
-  public loading$ = this.select((state) => state.loading);
+export const todoStateStore = new StateStore<TodosState>({
+  loading: false,
+  todos: [],
+});
 
-  constructor(initialState: TodosState, private todoApi: TodoApi) {
-    super(initialState);
-  }
-
-  // create methods to operate on state
-  loadTodos() {
-    this.patchState({
-      loading: true,
-    });
-    this.todoApi.getTodos().subscribe((todos) => {
-      this.patchState({
-        todos,
-        loading: false,
+export function createStoreActions(
+  store: typeof todoStateStore,
+  todoApi: TodoApi
+) {
+  return {
+    loadTodos() {
+      store.patchState({
+        loading: true,
       });
-    });
-  }
+      todoApi.getTodos().subscribe((todos) => {
+        store.patchState({
+          todos,
+          loading: false,
+        });
+      });
+    },
+  };
 }
 
-export interface Stores {
-  todos: TodosStateStore;
+export const TodoStateStoreContext = createContext({
+  store: todoStateStore,
+  actions: createStoreActions(todoStateStore, new TodoApi()),
+});
+
+export function useTodoStore(): [
+  typeof todoStateStore,
+  ReturnType<typeof createStoreActions>
+] {
+  const store = useContext(TodoStateStoreContext);
+  return [store.store, store.actions];
 }

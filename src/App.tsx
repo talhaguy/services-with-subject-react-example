@@ -1,6 +1,5 @@
 import { useEffect } from "react";
-import { Todo } from "./state";
-import { useObservable, useSelectState, useStore } from "./hooks";
+import { Todo, useStoreObservable, useTodoStore } from "./state";
 import "./App.css";
 
 function App() {
@@ -12,17 +11,13 @@ function App() {
 interface TodoListProps {}
 
 function TodoList(props: TodoListProps) {
-  const todosStore = useStore("todos");
-  const todos = useObservable(todosStore.todos$);
-  const loading = useObservable(todosStore.loading$);
-  // alternate way if class does not expose a desired observable:
-  // const todos = useSelectState(todosStore, (state) => {
-  //   return { todos: state.todos, loading: state.loading };
-  // });
+  const [todosStore, todoActions] = useTodoStore();
+  const todos = useStoreObservable(todosStore, (state) => state.todos);
+  const loading = useStoreObservable(todosStore, (state) => state.loading);
 
   useEffect(() => {
-    todosStore.loadTodos();
-  }, [todosStore]);
+    todoActions.loadTodos();
+  }, [todoActions]);
 
   return (
     <>

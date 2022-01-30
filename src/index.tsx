@@ -1,18 +1,24 @@
 import React from "react";
 import ReactDOM from "react-dom";
+import { TodoApi } from "./api";
 import App from "./App";
-import { StoreContext, todosStateStore } from "./context";
 import "./index.css";
+import {
+  createStoreActions,
+  todoStateStore,
+  TodoStateStoreContext,
+} from "./state";
 
 ReactDOM.render(
   <React.StrictMode>
-    <StoreContext.Provider
+    <TodoStateStoreContext.Provider
       value={{
-        todos: todosStateStore,
+        store: todoStateStore,
+        actions: createStoreActions(todoStateStore, new TodoApi()),
       }}
     >
       <App />
-    </StoreContext.Provider>
+    </TodoStateStoreContext.Provider>
   </React.StrictMode>,
   document.getElementById("root")
 );
